@@ -1,0 +1,13 @@
+mmcv                      2.1.0     
+
+
+mmdet                     3.3.0       
+
+
+mmengine                  0.10.7                   
+
+
+tensorboard               2.11.2 
+
+
+torch                     2.1.0+cu118 
