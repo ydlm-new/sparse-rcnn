@@ -1,25 +1,9 @@
-from mmdet.utils import register_all_modules
-register_all_modules()
-from mmengine.hooks import NaiveVisualizationHook
-from mmengine.registry import HOOKS
-HOOKS.register_module(module=NaiveVisualizationHook, force=True)
-from mmengine.config import read_base
-from mmdet.utils import register_all_modules
+_base_ = [
+    '../_base_/datasets/voc2012.py',
+    '../_base_/schedules/schedule_1x.py',
+    '../_base_/default_runtime.py'
+]
 
-register_all_modules()
-
-with read_base():
-    _base_ = [
-        'mmdet::_base_/datasets/voc0712.py',
-        'mmdet::_base_/schedules/schedule_1x.py',
-        'mmdet::_base_/default_runtime.py'
-    ]
-
-num_stages = 6
-num_proposals = 100
-
-num_stages = 6
-num_proposals = 100
 model = dict(
     type='SparseRCNN',
     data_preprocessor=dict(
@@ -47,12 +31,12 @@ model = dict(
         num_outs=4),
     rpn_head=dict(
         type='EmbeddingRPNHead',
-        num_proposals=num_proposals,
+        num_proposals=100,  # ✅ 直接写数字
         proposal_feature_channel=256),
     roi_head=dict(
         type='SparseRoIHead',
-        num_stages=num_stages,
-        stage_loss_weights=[1] * num_stages,
+        num_stages=6,
+        stage_loss_weights=[1] * 6,
         proposal_feature_channel=256,
         bbox_roi_extractor=dict(
             type='SingleRoIExtractor',
@@ -91,7 +75,7 @@ model = dict(
                     type='DeltaXYWHBBoxCoder',
                     clip_border=False,
                     target_means=[0., 0., 0., 0.],
-                    target_stds=[0.5, 0.5, 1., 1.])) for _ in range(num_stages)
+                    target_stds=[0.5, 0.5, 1., 1.])) for _ in range(6)
         ]),
     train_cfg=dict(
         rpn=None,
@@ -102,17 +86,17 @@ model = dict(
                     match_costs=[
                         dict(type='FocalLossCost', weight=2.0),
                         dict(type='BBoxL1Cost', weight=5.0, box_format='xyxy'),
-                        dict(type='IoUCost', iou_mode='giou', weight=2.0)
-                    ]),
+                        dict(type='IoUCost', iou_mode='giou', weight=2.0)]),
                 sampler=dict(type='PseudoSampler'),
-                pos_weight=1) for _ in range(num_stages)
+                pos_weight=1) for _ in range(6)
         ]),
-    test_cfg=dict(rpn=None, rcnn=dict(max_per_img=num_proposals))
+    test_cfg=dict(rpn=None, rcnn=dict(max_per_img=100))  # ✅ 直接写数字
 )
+
 
 optim_wrapper = dict(
     optimizer=dict(
-        _delete_=True, type='AdamW', lr=0.000025, weight_decay=0.0001),
+        _delete_=True, type='AdamW', lr=2.5e-5, weight_decay=0.0001),
     clip_grad=dict(max_norm=1, norm_type=2)
 )
 
@@ -125,14 +109,10 @@ visualizer = dict(
     name='visualizer'
 )
 
-val_evaluator = dict(type='VOCMetric', metric='mAP')
 val_cfg = dict(type='ValLoop')
 
-default_hooks = dict(
-    timer=dict(type='IterTimerHook'),
-    logger=dict(type='LoggerHook', interval=10),
-    param_scheduler=dict(type='ParamSchedulerHook'),
-    checkpoint=dict(type='CheckpointHook', interval=1),
-    sampler_seed=dict(type='DistSamplerSeedHook'),
-    visualization=dict(type='NaiveVisualizationHook')  # 替换这里
-)
+val_evaluator = dict(type='VOCMetric', metric='mAP', eval_mode='11points')
+test_evaluator = val_evaluator
+
+
+
